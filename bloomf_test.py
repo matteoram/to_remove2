@@ -1,119 +1,81 @@
-from bloomf import BloomFilter
-from random import shuffle, seed
-import time
+from bloomf import BloomFilter2
+from generate_random_strings import generate_random_strings
+from random import seed
+from typing import List
+import matplotlib.pyplot as plt
 
-seed(1010)
+def test_performance(bloom_filter: BloomFilter2, probability: float, words_list: List[str], sim_num: int) -> float:
+    
+    false_positive_rate = []
 
-n = 20  # No of items to add
-p = 0.05  # False positive probability
+    for _ in range(sim_num):
 
-bloomf = BloomFilter(n, p)
-print("Size of bit array:{}".format(bloomf.size))
-print("False positive Probability:{}".format(bloomf.fp_prob))
-print("Number of hash functions:{}".format(bloomf.hash_count))
+        num_elements_to_add = int(probability * len(words_list))
+        elements_to_add = words_list[:num_elements_to_add]
 
-# Words to be added
-word_present = ['abound', 'abounds', 'abundance', 'abundant', 'accessible',
-                'bloomf', 'blossom', 'bolster', 'bonny', 'bonus', 'bonuses',
-                'coherent', 'cohesive', 'colorful', 'comely', 'comfort',
-                'gems', 'generosity', 'generous', 'generously', 'genial']
+        for element in elements_to_add:
+            bloom_filter.add(element)
 
-# Word not added
-word_absent = ['bluff', 'cheater', 'hate', 'war', 'humanity',
-               'racism', 'hurt', 'nuke', 'gloomy', 'facebook',
-               'geeksforgeeks', 'twitter']
+        test_words = words_list
 
-for item in word_present:
-    bloomf.add(item)
+        false_positives = 0
+        for word in test_words:
 
-shuffle(word_present)
-shuffle(word_absent)
+            if bloom_filter.check(word) and word not in elements_to_add:
+                false_positives += 1
 
-test_words = word_present[:10] + word_absent
-shuffle(test_words)
+        false_positive_rate.append(false_positives / (len(test_words) - num_elements_to_add))
 
-false_positives = 0
-for word in test_words:
-    if bloomf.check(word):
-        if word in word_absent:
-            false_positives += 1
-            print("'{}' is a false positive!".format(word))
-        else:
-            print("'{}' is probably present!".format(word))
-    else:
-        print("'{}' is definitely not present!".format(word))
+    false_positive_rate_average = sum(false_positive_rate)/len(false_positive_rate)
+        
+    return false_positive_rate_average
 
-false_positive_rate = false_positives / len(test_words)
+def generate_graph(data):
 
-print(f'The percent of items not in the dataset is {round(len(word_absent)/len(test_words),4)*100}%')
-print(f'The false positive rate is {round(false_positive_rate,4)*100}%.')
+    sample_sizes = [entry['sample_size'] for entry in data]
+    false_positive_rates = [entry['false_positive_rate'] for entry in data]
 
-bloomf2 = BloomFilter(n, p)
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-for item in word_present:
-    bloomf2.add(item)
+    bar_width = 0.2
+    index = range(len(data))
+    ax.bar(index, false_positive_rates, width=bar_width, label='False Positive Rate')
 
-shuffle(word_present)
-shuffle(word_absent)
+    ax.set_xlabel('Sample Size')
+    ax.set_ylabel('False Positive Rate')
+    ax.set_title('False Positive Rates for Different Sample Sizes and Array Sizes')
+    step = max(len(sample_sizes) // 4, 1)
+    ax.set_xticks(index[::step])
+    ax.set_xticklabels(sample_sizes[::step], rotation=45)
+    ax.axhline(y=0.05, color='r', linestyle='--', linewidth=1, label='Target 5% FPR')
+    ax.legend()
 
-test_words = word_present[:10] + word_absent
-shuffle(test_words)
+    plt.tight_layout()
+    fig.savefig('chart_1_false_positive_rates.png')
+    plt.show()
 
-false_positives = 0
-for word in test_words:
-    if bloomf.check(word):
-        if word in word_absent:
-            false_positives += 1
-            print("'{}' is a false positive!".format(word))
-        else:
-            print("'{}' is probably present!".format(word))
-    else:
-        print("'{}' is definitely not present!".format(word))
+if __name__ == "__main__":
 
-false_positive_rate = false_positives / len(test_words)
+    seed(1010)
+    array_size = 9585058
+    hash_functions = 7
+    probability = 0.05
+    min_char = 1
+    max_char = 255
+    sample_min = 20
+    sample_max = 10000
+    sample_step = 20
+    sim_num = 100
 
-print(f'The percent of items not in the dataset is {round(len(word_absent)/len(test_words),4)*100}%')
-print(f'The false positive rate is {round(false_positive_rate,4)*100}%.')
-bloomf2 = BloomFilter(n, p)
+    bloom_filter = BloomFilter2(array_size, hash_functions)
+    results = []
 
-for item in word_present:
-    bloomf2.add(item)
+    for i in range(sample_min, sample_max, sample_step):
 
-shuffle(word_present)
-shuffle(word_absent)
+        words_list = generate_random_strings(i, min_char, max_char)
+        
+        false_positive_rate = test_performance(bloom_filter, probability, words_list, sim_num)
 
-test_words = word_present[:10] + word_absent
-shuffle(test_words)
-
-false_positives = 0
-for word in test_words:
-    if bloomf.check(word):
-        if word in word_absent:
-            false_positives += 1
-            print("'{}' is a false positive!".format(word))
-        else:
-            print("'{}' is probably present!".format(word))
-    else:
-        print("'{}' is definitely not present!".format(word))
-
-false_positive_rate = false_positives / len(test_words)
-
-print(f'The percent of items not in the dataset is {round(len(word_absent)/len(test_words),4)*100}%')
-print(f'The false positive rate is {round(false_positive_rate,4)*100}%.')
-
-
-## Time complexity
-
-# Inserting
-
-sim_num = 10
-times_list = []
-for _ in range(sim_num):
-    bloomf = BloomFilter(n, p)
-    start_time = time.time_ns()
-    for item in word_present:
-        bloomf.add(item)
-    end_time = time.time_ns()
-    times_list.append(end_time - start_time)
-time_avg = sum(times_list)/sim_num
-print(f'The average inserting time is {round(time_avg/ 1_000_000, 3)} milliseconds.')
+        results.append({'sample_size': i, 'false_positive_rate': false_positive_rate})
+    
+    generate_graph(results)
