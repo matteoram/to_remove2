@@ -1,91 +1,93 @@
 import math
 import mmh3
 from bitarray import bitarray
+import hashlib
+import BitVector
 
 
 class BloomFilter(object):
-
-	"""
+    """
 	Class for Bloom filter, using murmur3 hash function
 	"""
 
-	def __init__(self, items_count, fp_prob):
-		"""
+    def __init__(self, items_count, hashes):
+        """
 		items_count : int
-			Number of items expected to be stored in bloomf filter
-		fp_prob : float
-			False Positive probability in decimal
+			Number of items expected to be stored in Bloom filter
+		hashes : int
+			Number of hashes to be used when storing items in Bloom filter
 		"""
-		# False possible probability in decimal
-		self.fp_prob = fp_prob
 
-		# Size of bit array to use
-		self.size = self.get_size(items_count, fp_prob)
+        # total count of the elements inserted in the set, initialized to zero,
+        # if this is incremented on add, this will be length of the filter, given elements are not removed
+        self.n = 0
 
-		# Number of hash functions to use
-		self.hash_count = self.get_hash_count(self.size, items_count)
+        self.m = items_count
+        self.k = hashes
 
-		# Bit array of given size
-		self.bit_array = bitarray(self.size)
+        self.bv = BitVector.BitVector(size=self.m)
+        self._setAllBitsToZero()
 
-		# Initialize all bits as 0
-		self.bit_array.setall(0)
+    def _setAllBitsToZero(self):
+        for i in self.bv:
+            self.bv[i] = 0
 
-	def add(self, item):
+    def getBitArrayIndices(self, key):
+        """
+		hashes the key for k defined,
+		returns the positions in the bit array for this key
+		returns a list of integers as the indices positions
 		"""
-		Add an item in the filter
-		"""
-		digests = []
-		for i in range(self.hash_count):
+        returnList = []
+        for i in range(1, self.k + 1):
+            returnList.append((hash(key) + i * mmh3.hash(key)) % self.m)
+        return returnList
 
-			# Create digest for given item
-			# With different seed, digest created is different
-			digest = mmh3.hash(item, i) % self.size
-			digests.append(digest)
-
-			# Set the bit True in bit_array
-			self.bit_array[digest] = True
-
-	def check(self, item):
+    def add(self, key):
+        """
+		Insert an element to the filter, rest is application insert
 		"""
-		Check for existence of an item in filter
-		"""
-		for i in range(self.hash_count):
-			digest = mmh3.hash(item, i) % self.size
-			if self.bit_array[digest] == False:
+        for i in self.getBitArrayIndices(key):
+            self.bv[i] = 1
+        self.n += 1
 
-				# If any of bit is False then its not present in filter
-				# else there is probability that it exist
-				return False
-		return True
+    def lookup(self, key):
+        """
+		returns boolean whether element exists in the set or not
+		"""
+        for i in self.getBitArrayIndices(key):
+            if self.bv[i] != 1:
+                return False
+        return True
 
-	@classmethod
-	def get_size(self, n, p):
+    def length(self):
+        """
+		Returns the current size of Bloom filter
 		"""
-		Return the size of bit array(m) to used using
-		following formula
-		m = -(n * lg(p)) / (lg(2)^2)
-		n : int
-			Number of items expected to be stored in filter
-		p : float
-			False Positive probability in decimal
-		"""
-		m = -(n * math.log(p))/(math.log(2)**2)
-		return int(m)
+        return self.n
 
-	@classmethod
-	def get_hash_count(self, m, n):
+    def generateStats(self):
+        """
+		Calculates and returns the statistics of a filter
+		Probability of FP, n, m, k, predicted false positive rate.
 		"""
-		Return the hash function(k) to be used using following formula
-		k = (m/n) * lg(2)
+        n = float(self.n)
+        m = float(self.m)
+        k = float(self.k)
+        p_fp = math.pow((1.0 - math.exp(-(k * n) / m)), k)
+        print("Probability of false positives: ", p_fp)
+        print("Predicted false positive rate: ", p_fp * 100.0)
+        print("Number of elements entered in filter: ", n)
+        print("Number of bits in filter: ", m)
+        print("Number of hashes in filter: ", k)
 
-		m : int
-			Size of bit array
-		n : int
-			Number of items expected to be stored in filter
+    def clear(self):
+        """
+		Reinitializes the filter and clears old values and statistics
 		"""
-		k = (m/n) * math.log(2)
-		return int(k)
+        self.n = 0
+        self.bv = BitVector.BitVector(size=self.m)
+
 
 class BloomFilter2:
     def __init__(self, size: int, hash_count: int):
