@@ -6,7 +6,8 @@ import time
 
 def test_check(bloom_filter: BloomFilter2, words_list: List[str], sim_num: int) -> float:
     
-    times_list = []
+    item_time = []
+    total_time = []
 
     for _ in range(sim_num):
         
@@ -16,13 +17,13 @@ def test_check(bloom_filter: BloomFilter2, words_list: List[str], sim_num: int) 
         start_time = time.time_ns()
 
         for item in words_list:
-            bloom_filter.check(item)
+            bloom_filter.lookup(item)
         
         end_time = time.time_ns()
 
-        times_list.append(end_time - start_time)
+        total_time.append(end_time - start_time)
 
-    time_avg = sum(times_list)/sim_num
+    time_avg = sum(total_time)/sim_num
 
     return time_avg
 

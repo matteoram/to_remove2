@@ -90,20 +90,67 @@ class BloomFilter(object):
 
 
 class BloomFilter2:
-    def __init__(self, size: int, hash_count: int):
-        self.size = size
-        self.hash_count = hash_count
-        self.bit_array = bitarray(size)
+    """
+    Class for Bloom filter, using murmur3 hash function
+    """
+
+    def __init__(self, n, p):
+        """
+        n : int
+            Number of items expected to be stored in Bloom filter
+        p : float
+            Desired false positive rate
+        """
+        self.n = n
+        self.p = p
+
+        self.m = math.ceil(-n * math.log(p) / (math.log(2) ** 2))
+        self.k = math.ceil((self.m / n) * math.log(2))
+
+        self.bit_array = bitarray(self.m)
         self.bit_array.setall(0)
 
-    def add(self, item: str):
-        for seed in range(self.hash_count):
-            digest = mmh3.hash(item, seed) % self.size
-            self.bit_array[digest] = 1
+    def _hashes(self, item):
+        """
+        Generates k hash values for the given item
+        """
+        return [mmh3.hash(item, i) % self.m for i in range(self.k)]
 
-    def check(self, item: str) -> bool:
-        for seed in range(self.hash_count):
-            digest = mmh3.hash(item, seed) % self.size
-            if not self.bit_array[digest]:
-                return False
-        return True
+    def add(self, item):
+        """
+        Insert an element to the filter
+        """
+        for hash_val in self._hashes(item):
+            self.bit_array[hash_val] = 1
+
+    def check(self, item):
+        """
+        Returns boolean whether element exists in the set or not
+        """
+        return all(self.bit_array[hash_val] for hash_val in self._hashes(item))
+
+    def length(self):
+        """
+        Returns the current size of Bloom filter
+        """
+        return self.n
+
+    def generateStats(self):
+        """
+        Calculates and returns the statistics of a filter
+        Probability of FP, n, m, k, predicted false positive rate.
+        """
+        n = float(self.n)
+        m = float(self.m)
+        k = float(self.k)
+        p_fp = (1 - math.exp(-k * n / m)) ** k
+        print("Predicted false positive rate: ", p_fp * 100.0)
+        print("Number of elements entered in filter: ", n)
+        print("Number of bits in filter: ", m)
+        print("Number of hashes in filter: ", k)
+
+    def clear(self):
+        """
+        Reinitializes the filter and clears old values and statistics
+        """
+        self.bit_array.setall(0)
