@@ -4,39 +4,68 @@ from random import seed, shuffle
 from typing import List
 import matplotlib.pyplot as plt
 
-def test_performance(bloom_filter: BloomFilter2, probability: float, words_list: List[str], sim_num: int) -> float:
-    '''Function to examine the performance of the bloom filter in holding a
-    false positive rate of 5%. This is performed by using an inputted list of
-    words and splitting it between 
-    '''
+def test_performance(bloom_filter: BloomFilter2, probability: float, names_list: List[str], sim_num: int) -> float:
+    """
+    Evaluate the performance of a Bloom filter in maintaining a specified false positive rate.
+
+    Parameters:
+    - bloom_filter (BloomFilter2): An instance of the BloomFilter2 class to be tested.
+    - probability (float): Desired false positive probability (e.g., 0.05 for 5%).
+    - names_list (List[str]): List of names used to test the Bloom filter.
+    - sim_num (int): Number of simulations to run for averaging results.
+
+    Returns:
+    - float: Average false positive rate observed across simulations.
+
+    The function evaluates the Bloom filter's ability to achieve and maintain a false positive rate
+    close to the specified probability. It clears the Bloom filter, inserts a subset of names_list
+    items (based on the given probability), and then checks the filter's response to items not
+    inserted. This process is repeated across multiple simulations to calculate an average false
+    positive rate.
+    """
+
     false_positive_rate = []
 
     for _ in range(sim_num):
 
         bloom_filter.clear()
-        shuffle(words_list)
-        num_words_present = int((1 - probability) * len(words_list))
-        words_present = words_list[:num_words_present]
-        words_absent = words_list[num_words_present:]
+        shuffle(names_list)
+        num_names_present = int((1 - probability) * len(names_list))
+        names_present = names_list[:num_names_present]
+        names_absent = names_list[num_names_present:]
 
-        for element in words_present:
+        for element in names_present:
             bloom_filter.add(element)
 
         false_positives = 0
 
-        for word in words_absent:
-            if bloom_filter.check(word):
+        for name in names_absent:
+            if bloom_filter.check(name):
                 false_positives += 1
 
-        false_positive_rate.append(false_positives / len(words_absent))
+        false_positive_rate.append(false_positives / len(names_absent))
 
     false_positive_rate_average = sum(false_positive_rate)/len(false_positive_rate)
         
     return false_positive_rate_average
 
-def generate_graph(data, title):
+def generate_graph(data, name, title):
+    """
+    Generate a bar graph visualizing false positive rates against sample sizes.
 
-    word_list_sizes = [entry['word_list_size'] for entry in data]
+    Parameters:
+    - data (list of dicts): Data containing 'name_list_size' and 'false_positive_rate' entries.
+    - name (str): File name to save the generated graph.
+    - title (str): Title of the graph.
+
+    Generates a bar graph with sample sizes on the x-axis and corresponding false positive rates
+    on the y-axis. The function expects data in the format of a list of dictionaries where each
+    dictionary contains 'name_list_size' (sample size) and 'false_positive_rate' (rate to be plotted)
+    entries. The graph includes a horizontal dashed line at y=0.05 to indicate the target false
+    positive rate of 5%. The graph is saved as a file named 'name' and displayed using matplotlib.
+    """
+
+    name_list_sizes = [entry['name_list_size'] for entry in data]
     false_positive_rates = [entry['false_positive_rate'] for entry in data]
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -47,55 +76,55 @@ def generate_graph(data, title):
 
     ax.set_xlabel('Sample Size')
     ax.set_ylabel('False Positive Rate')
-    ax.set_title('False Positive Rates for Different Sample Sizes and Array Sizes')
-    step = max(len(word_list_sizes) // 3, 1)
-    ax.set_xticks(index[::step])
-    ax.set_xticklabels(word_list_sizes[::step], rotation=45)
+    ax.set_title(title)
     ax.axhline(y=0.05, color='r', linestyle='--', linewidth=1, label='Target 5% FPR')
     ax.legend()
+    xticks = [100, 5000, 10000, 15000, 20000, 25000, 30000]
+    ax.set_xticks([name_list_sizes.index(x) for x in xticks])
+    ax.set_xticklabels(xticks)
 
     plt.tight_layout()
-    fig.savefig(title)
+    plt.savefig(name)
     plt.show()
 
 if __name__ == "__main__":
 
     seed(1010)
+    sim_num = 100
 
-    n = 30000
+    # Parameters for Bloom filter and simulation
+    n = 20000
     p = 0.05
     
-    sim_num = 100
-    
-    min_char = 1
-    max_char = 255
-    
-    word_list_min = 100
-    word_list_max = n
-    word_list_step = 100
+    # Parameters for varying name lengths and list sizes
+    name_min_char = 1
+    name_max_char = 255
+    name_list_min = 100
+    name_list_max = 30000
+    name_list_step = 100
 
+    # Initialize list to store results and Bloom filter with fixed parameters
     results_fixed = []
     bloom_filter = BloomFilter2(n, p)
 
-    for i in range(word_list_min, word_list_max + word_list_min, word_list_step):
+    # Test performance for different sizes of name lists with fixed Bloom filter
+    for i in range(name_list_min, name_list_max + name_list_min, name_list_step):
 
-        words_list = generate_random_strings(i, min_char, max_char)
-        false_positive_rate = test_performance(bloom_filter, p, words_list, sim_num)
-        results_fixed.append({'word_list_size': i, 'false_positive_rate': false_positive_rate})
-        if i % 1000 == 0:
-            print({'word_list_size': i, 'false_positive_rate': false_positive_rate})
-    
-    generate_graph(results_fixed, 'chart_1_fixed_bf.png')
+        names_list = generate_random_strings(i, name_min_char, name_max_char)
+        false_positive_rate = test_performance(bloom_filter, p, names_list, sim_num)
+        results_fixed.append({'name_list_size': i, 'false_positive_rate': false_positive_rate})
 
+    generate_graph(results_fixed, 'chart_1_fixed_bf.png', 'Chart 1. False positive rate for fixed Bloom filter')
+
+    # Initialize list to store results for dynamically adjusted Bloom filter
     results_dynamic = []
 
-    for i in range(word_list_min, word_list_max + word_list_min, word_list_step):
+    # Test performance for different sizes of name lists with dynamically adjusted Bloom filter
+    for i in range(name_list_min, name_list_max + name_list_min, name_list_step):
 
-        words_list = generate_random_strings(i, min_char, max_char)
+        names_list = generate_random_strings(i, name_min_char, name_max_char)
         bloom_filter = BloomFilter2(i, p)
-        false_positive_rate = test_performance(bloom_filter, p, words_list, sim_num)
-        results_dynamic.append({'word_list_size': i, 'false_positive_rate': false_positive_rate})
-        if i % 1000 == 0:
-            print({'word_list_size': i, 'false_positive_rate': false_positive_rate})
-    
-    generate_graph(results_dynamic, 'chart_1_dynamic_bf.png')
+        false_positive_rate = test_performance(bloom_filter, p, names_list, sim_num)
+        results_dynamic.append({'name_list_size': i, 'false_positive_rate': false_positive_rate})
+
+    generate_graph(results_dynamic, 'chart_2_dynamic_bf.png', 'Chart 2. False positive rate for dynamically adjusted Bloom filter')

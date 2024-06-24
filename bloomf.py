@@ -1,7 +1,6 @@
 import math
 import mmh3
 from bitarray import bitarray
-import hashlib
 import BitVector
 
 
@@ -91,16 +90,30 @@ class BloomFilter(object):
 
 class BloomFilter2:
     """
-    Class for Bloom filter, using murmur3 hash function
+    Class for Bloom filter using Murmur3 hash function.
+
+    Attributes:
+    - n (int): Number of items expected to be stored in Bloom filter.
+    - p (float): Desired false positive rate.
+
+    Methods:
+    - __init__(n, p): Initializes the Bloom filter with parameters n and p.
+    - add(item): Inserts an element into the Bloom filter.
+    - check(item): Checks if an element exists in the Bloom filter.
+    - length(): Returns the current size of the Bloom filter.
+    - generateStats(): Calculates and prints statistics of the Bloom filter.
+    - clear(): Reinitializes the Bloom filter and clears old values and statistics.
     """
 
     def __init__(self, n, p):
         """
-        n : int
-            Number of items expected to be stored in Bloom filter
-        p : float
-            Desired false positive rate
+        Initialize BloomFilter2 with parameters n and p.
+
+        Args:
+        - n (int): Number of items expected to be stored in Bloom filter.
+        - p (float): Desired false positive rate.
         """
+
         self.n = n
         self.p = p
 
@@ -112,34 +125,62 @@ class BloomFilter2:
 
     def _hashes(self, item):
         """
-        Generates k hash values for the given item
+        Generate k hash values for the given item.
+
+        Args:
+        - item: Element to hash.
+
+        Returns:
+        - List of k hash values.
         """
+
         return [mmh3.hash(item, i) % self.m for i in range(self.k)]
 
     def add(self, item):
         """
-        Insert an element to the filter
+        Insert an element into the Bloom filter.
+
+        Args:
+        - item: Element to insert.
         """
+
         for hash_val in self._hashes(item):
             self.bit_array[hash_val] = 1
 
     def check(self, item):
         """
-        Returns boolean whether element exists in the set or not
+        Check if an element exists in the Bloom filter.
+
+        Args:
+        - item: Element to check.
+
+        Returns:
+        - bool: True if the element is likely present; otherwise, False.
         """
+
         return all(self.bit_array[hash_val] for hash_val in self._hashes(item))
 
     def length(self):
         """
-        Returns the current size of Bloom filter
+        Return the current size of the Bloom filter.
+
+        Returns:
+        - int: Current size of the Bloom filter.
         """
+
         return self.n
 
     def generateStats(self):
         """
-        Calculates and returns the statistics of a filter
-        Probability of FP, n, m, k, predicted false positive rate.
+        Calculate and print statistics of the Bloom filter.
+
+        Statistics include:
+        - Predicted false positive rate.
+        - Number of elements entered in filter.
+        - Number of bits in filter.
+        - Number of hashes in filter.
         """
+
         n = float(self.n)
         m = float(self.m)
         k = float(self.k)
@@ -151,6 +192,7 @@ class BloomFilter2:
 
     def clear(self):
         """
-        Reinitializes the filter and clears old values and statistics
+        Reinitialize the Bloom filter and clear old values and statistics.
         """
+
         self.bit_array.setall(0)
